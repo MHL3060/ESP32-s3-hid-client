@@ -38,7 +38,7 @@
 
 // Install NimBLE-Arduino by h2zero using the IDE library manager.
 #include <NimBLEDevice.h>
-
+#include "Bluetooth.h"
 const uint16_t APPEARANCE_HID_GENERIC = 0x3C0;
 const uint16_t APPEARANCE_HID_KEYBOARD = 0x3C1;
 const uint16_t APPEARANCE_HID_MOUSE = 0x3C2;
@@ -60,7 +60,13 @@ const char HID_REPORT_DATA[] = "2A4D";
 static NimBLEAdvertisedDevice *advDevice;
 
 static bool doConnect = false;
-static uint32_t scanTime = 0; /** 0 = scan forever */
+static uint32_t scanTime = 100; /** 0 = scan forever */
+
+/* Define the PHY's to use when connecting to peer devices, can be 1, 2, or all 3 (default).*/
+static uint8_t connectPhys = BLE_GAP_LE_PHY_CODED_MASK | BLE_GAP_LE_PHY_1M_MASK /*| BLE_GAP_LE_PHY_2M_MASK */;
+
+// /** Create a single global instance of the callback class to be used by all clients */
+// static ClientCallbacks clientCB;
 
 /**  None of these are required as they will be handled by the library with defaults. **
  **                       Remove as you see fit for your needs                        */
@@ -91,8 +97,6 @@ class ClientCallbacks : public NimBLEClientCallbacks
      */
     bool onConnParamsUpdateRequest(NimBLEClient *pClient, const ble_gap_upd_params *params)
     {
-        // Failing to accepts parameters may result in the remote device
-        // disconnecting.
         return true;
     };
 
@@ -132,10 +136,7 @@ class AdvertisedDeviceCallbacks : public NimBLEAdvertisedDeviceCallbacks
 
     void onResult(NimBLEAdvertisedDevice *advertisedDevice)
     {
-        //    if ((advertisedDevice->getAdvType() == BLE_HCI_ADV_TYPE_ADV_DIRECT_IND_HD)
-        //        || (advertisedDevice->getAdvType() == BLE_HCI_ADV_TYPE_ADV_DIRECT_IND_LD)
-        //        || (advertisedDevice->haveServiceUUID() && advertisedDevice->isAdvertisingService(NimBLEUUID(HID_SERVICE))))
-        if (advertisedDevice->haveServiceUUID() && advertisedDevice->isAdvertisingService(NimBLEUUID(HID_SERVICE)))
+        if ((advertisedDevice->getAdvType() == BLE_HCI_ADV_TYPE_ADV_DIRECT_IND_HD) || (advertisedDevice->getAdvType() == BLE_HCI_ADV_TYPE_ADV_DIRECT_IND_LD) || (advertisedDevice->haveServiceUUID() && advertisedDevice->isAdvertisingService(NimBLEUUID(HID_SERVICE))))
         {
             Serial.printf("onResult: AdvType= %d\r\n", advertisedDevice->getAdvType());
             Serial.print("Advertised HID Device found: ");
@@ -246,10 +247,8 @@ void scanEndedCB(NimBLEScanResults results)
 {
     Serial.println("Scan Ended");
 }
-
 /** Create a single global instance of the callback class to be used by all clients */
 static ClientCallbacks clientCB;
-
 /** Handles the provisioning of clients and connects / interfaces with the server */
 bool connectToServer()
 {
@@ -281,6 +280,7 @@ bool connectToServer()
          */
         else
         {
+            Serial.print("disconnect client");
             pClient = NimBLEDevice::getDisconnectedClient();
         }
     }
@@ -341,6 +341,7 @@ bool connectToServer()
     { /** make sure it's not null */
         if (!reconnected)
         {
+
             // This returns the HID report descriptor like this
             // HID_REPORT_MAP 0x2a4b Value: 5,1,9,2,A1,1,9,1,A1,0,5,9,19,1,29,5,15,0,25,1,75,1,
             // Copy and paste the value digits to http://eleccelerator.com/usbdescreqparser/
@@ -400,7 +401,6 @@ bool connectToServer()
 void bluetooth_setup()
 {
 
-    Serial.println("Starting NimBLE HID Client");
     /** Initialize NimBLE, no device name spcified as we are not advertising */
     NimBLEDevice::init("");
 
@@ -450,7 +450,9 @@ void bluetooth_loop()
 {
     /** Loop here until we find a device we want to connect to */
     if (!doConnect)
+    {
         return;
+    }
 
     doConnect = false;
 
