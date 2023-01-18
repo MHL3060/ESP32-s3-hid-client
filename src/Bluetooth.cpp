@@ -1,156 +1,24 @@
-/** NimBLE_Server Demo:
- *
- *  Demonstrates many of the available features of the NimBLE client library.
- *
- *  Created: on March 24 2020
- *      Author: H2zero
- *
- */
 
 /*
  * This program is based on https://github.com/h2zero/NimBLE-Arduino/tree/master/examples/NimBLE_Client.
- * My changes are covered by the MIT license.
- */
-
-/*
- * MIT License
- *
- * Copyright (c) 2022 esp32beans@gmail.com
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
  */
 
 // Install NimBLE-Arduino by h2zero using the IDE library manager.
 #include <NimBLEDevice.h>
 #include "Bluetooth.h"
-const uint16_t APPEARANCE_HID_GENERIC = 0x3C0;
-const uint16_t APPEARANCE_HID_KEYBOARD = 0x3C1;
-const uint16_t APPEARANCE_HID_MOUSE = 0x3C2;
-const uint16_t APPEARANCE_HID_JOYSTICK = 0x3C3;
-const uint16_t APPEARANCE_HID_GAMEPAD = 0x3C4;
-const uint16_t APPEARANCE_HID_DIGITIZER_TABLET = 0x3C5;
-const uint16_t APPEARANCE_HID_CARD_READER = 0x3C6;
-const uint16_t APPEARANCE_HID_DIGITAL_PEN = 0x3C7;
-const uint16_t APPEARANCE_HID_BARCODE_SCANNER = 0x3C8;
-const uint16_t APPEARANCE_HID_TOUCHPAD = 0x3C9;
-const uint16_t APPEARANCE_HID_PRESENTATION_REMOTE = 0x3CA;
 
-const char HID_SERVICE[] = "1812";
-const char HID_INFORMATION[] = "2A4A";
-const char HID_REPORT_MAP[] = "2A4B";
-const char HID_CONTROL_POINT[] = "2A4C";
-const char HID_REPORT_DATA[] = "2A4D";
+// static NimBLEAdvertisedDevice *advDevice;
 
-static NimBLEAdvertisedDevice *advDevice;
-
-static bool doConnect = false;
-static uint32_t scanTime = 100; /** 0 = scan forever */
+// static bool doConnect = false;
 
 /* Define the PHY's to use when connecting to peer devices, can be 1, 2, or all 3 (default).*/
-static uint8_t connectPhys = BLE_GAP_LE_PHY_CODED_MASK | BLE_GAP_LE_PHY_1M_MASK /*| BLE_GAP_LE_PHY_2M_MASK */;
+static uint8_t connectPhys = BLE_GAP_LE_PHY_CODED_MASK | BLE_GAP_LE_PHY_1M_MASK | BLE_GAP_LE_PHY_2M_MASK;
 
-// /** Create a single global instance of the callback class to be used by all clients */
-// static ClientCallbacks clientCB;
+static ClientCallbacks clientCB;
 
-/**  None of these are required as they will be handled by the library with defaults. **
- **                       Remove as you see fit for your needs                        */
-class ClientCallbacks : public NimBLEClientCallbacks
-{
-    void onConnect(NimBLEClient *pClient)
-    {
-        Serial.println("Connected");
-        /** After connection we should change the parameters if we don't need fast response times.
-         *  These settings are 150ms interval, 0 latency, 450ms timout.
-         *  Timeout should be a multiple of the interval, minimum is 100ms.
-         *  I find a multiple of 3-5 * the interval works best for quick response/reconnect.
-         *  Min interval: 120 * 1.25ms = 150, Max interval: 120 * 1.25ms = 150, 0 latency, 60 * 10ms = 600ms timeout
-         */
-        pClient->updateConnParams(120, 120, 0, 60);
-    };
-
-    void onDisconnect(NimBLEClient *pClient)
-    {
-        Serial.print(pClient->getPeerAddress().toString().c_str());
-        Serial.println(" Disconnected - Starting scan");
-        NimBLEDevice::getScan()->start(scanTime, scanEndedCB);
-    };
-
-    /** Called when the peripheral requests a change to the connection parameters.
-     *  Return true to accept and apply them or false to reject and keep
-     *  the currently used parameters. Default will return true.
-     */
-    bool onConnParamsUpdateRequest(NimBLEClient *pClient, const ble_gap_upd_params *params)
-    {
-        return true;
-    };
-
-    /********************* Security handled here **********************
-     ****** Note: these are the same return values as defaults ********/
-    uint32_t onPassKeyRequest()
-    {
-        Serial.println("Client Passkey Request");
-        /** return the passkey to send to the server */
-        return 123456;
-    };
-
-    bool onConfirmPIN(uint32_t pass_key)
-    {
-        Serial.print("The passkey YES/NO number: ");
-        Serial.println(pass_key);
-        /** Return false if passkeys don't match. */
-        return true;
-    };
-
-    /** Pairing process complete, we can check the results in ble_gap_conn_desc */
-    void onAuthenticationComplete(ble_gap_conn_desc *desc)
-    {
-        if (!desc->sec_state.encrypted)
-        {
-            Serial.println("Encrypt connection failed - disconnecting");
-            /** Find the client with the connection handle provided in desc */
-            NimBLEDevice::getClientByID(desc->conn_handle)->disconnect();
-            return;
-        }
-    };
-};
+AdvertisedDeviceCallbacks *pAdvertisedDeviceCallBack;
 
 /** Define a class to handle the callbacks when advertisments are received */
-class AdvertisedDeviceCallbacks : public NimBLEAdvertisedDeviceCallbacks
-{
-
-    void onResult(NimBLEAdvertisedDevice *advertisedDevice)
-    {
-        if ((advertisedDevice->getAdvType() == BLE_HCI_ADV_TYPE_ADV_DIRECT_IND_HD) || (advertisedDevice->getAdvType() == BLE_HCI_ADV_TYPE_ADV_DIRECT_IND_LD) || (advertisedDevice->haveServiceUUID() && advertisedDevice->isAdvertisingService(NimBLEUUID(HID_SERVICE))))
-        {
-            Serial.printf("onResult: AdvType= %d\r\n", advertisedDevice->getAdvType());
-            Serial.print("Advertised HID Device found: ");
-            Serial.println(advertisedDevice->toString().c_str());
-
-            /** stop scan before connecting */
-            NimBLEDevice::getScan()->stop();
-            /** Save the device reference in a global for the client to use*/
-            advDevice = advertisedDevice;
-            /** Ready to connect now */
-            doConnect = true;
-        }
-    };
-};
 
 /** Notification / Indication receiving handler callback */
 // Notification from 4c:75:25:xx:yy:zz: Service = 0x1812, Characteristic = 0x2a4d, Value = 1,0,0,0,0,
@@ -197,8 +65,9 @@ void notifyCB(NimBLERemoteCharacteristic *pRemoteCharacteristic, uint8_t *pData,
                           my_mouse->buttons, my_mouse->x, my_mouse->y, my_mouse->wheel);
         }
         break;
+
+    case 7:
     case 9:
-        appearance = advDevice->getAppearance();
         if (appearance == APPEARANCE_HID_MOUSE)
         {
             // MS BLE Mouse returns 9 bytes per HID report
@@ -248,9 +117,9 @@ void scanEndedCB(NimBLEScanResults results)
     Serial.println("Scan Ended");
 }
 /** Create a single global instance of the callback class to be used by all clients */
-static ClientCallbacks clientCB;
+
 /** Handles the provisioning of clients and connects / interfaces with the server */
-bool connectToServer()
+bool connectToServer(NimBLEAdvertisedDevice *advDevice)
 {
     NimBLEClient *pClient = nullptr;
     bool reconnected = false;
@@ -429,8 +298,9 @@ void bluetooth_setup()
     /** create new scan */
     NimBLEScan *pScan = NimBLEDevice::getScan();
 
+    pAdvertisedDeviceCallBack = new AdvertisedDeviceCallbacks();
     /** create a callback that gets called when advertisers are found */
-    pScan->setAdvertisedDeviceCallbacks(new AdvertisedDeviceCallbacks());
+    pScan->setAdvertisedDeviceCallbacks(pAdvertisedDeviceCallBack);
 
     /** Set scan interval (how often) and window (how long) in milliseconds */
     pScan->setInterval(45);
@@ -443,21 +313,21 @@ void bluetooth_setup()
     /** Start scanning for advertisers for the scan time specified (in seconds) 0 = forever
      *  Optional callback for when scanning stops.
      */
-    pScan->start(scanTime, scanEndedCB);
+    pScan->start(SCAN_TIME, scanEndedCB);
 }
 
 void bluetooth_loop()
 {
     /** Loop here until we find a device we want to connect to */
-    if (!doConnect)
+    if (!pAdvertisedDeviceCallBack->shouldConnect())
     {
         return;
     }
-
-    doConnect = false;
+    NimBLEAdvertisedDevice *pCandidateDevice = pAdvertisedDeviceCallBack->getCandidatedadDevice();
+    pAdvertisedDeviceCallBack->removeCandidate();
 
     /** Found a device we want to connect to, do it now */
-    if (connectToServer())
+    if (connectToServer(pCandidateDevice))
     {
         Serial.println("Success! we should now be getting notifications!");
     }
