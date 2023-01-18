@@ -1,11 +1,7 @@
+#ifndef BLUETOOTH_HID_H
+#define BLUETOOTH_HID_H
+
 #include <NimBLEDevice.h>
-
-void bluetooth_setup();
-void bluetooth_loop();
-bool connectToServer();
-void scanEndedCB(NimBLEScanResults results);
-
-static uint32_t scanTime = 0;
 
 #define SCAN_TIME 0 /** 0 = scan forever */
 
@@ -27,6 +23,11 @@ const char HID_REPORT_MAP[] = "2A4B";
 const char HID_CONTROL_POINT[] = "2A4C";
 const char HID_REPORT_DATA[] = "2A4D";
 
+static uint8_t connectPhys = BLE_GAP_LE_PHY_CODED_MASK | BLE_GAP_LE_PHY_1M_MASK | BLE_GAP_LE_PHY_2M_MASK;
+
+/** Callback to process the results of the last scan or restart it */
+void scanEndedCB(NimBLEScanResults results);
+
 class ClientCallbacks : public NimBLEClientCallbacks
 {
 public:
@@ -45,8 +46,15 @@ public:
     bool shouldConnect();
     NimBLEAdvertisedDevice *getCandidatedadDevice();
     void removeCandidate();
+    virtual ~AdvertisedDeviceCallbacks();
 
 private:
     NimBLEAdvertisedDevice *candidateDevice;
     bool shouldProcessed;
 };
+
+void bluetoothSetup();
+
+void bluetoothLoop();
+
+#endif

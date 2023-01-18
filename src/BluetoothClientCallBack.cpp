@@ -16,7 +16,7 @@ void ClientCallbacks::onDisconnect(NimBLEClient *pClient)
 {
     Serial.print(pClient->getPeerAddress().toString().c_str());
     Serial.println(" Disconnected - Starting scan");
-    NimBLEDevice::getScan()->start(scanTime, scanEndedCB);
+    NimBLEDevice::getScan()->start(SCAN_TIME, scanEndedCB);
 };
 
 /** Called when the peripheral requests a change to the connection parameters.

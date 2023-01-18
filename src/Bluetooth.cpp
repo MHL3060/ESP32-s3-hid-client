@@ -7,18 +7,13 @@
 #include <NimBLEDevice.h>
 #include "Bluetooth.h"
 
-// static NimBLEAdvertisedDevice *advDevice;
-
-// static bool doConnect = false;
-
-/* Define the PHY's to use when connecting to peer devices, can be 1, 2, or all 3 (default).*/
-static uint8_t connectPhys = BLE_GAP_LE_PHY_CODED_MASK | BLE_GAP_LE_PHY_1M_MASK | BLE_GAP_LE_PHY_2M_MASK;
-
 static ClientCallbacks clientCB;
-
 AdvertisedDeviceCallbacks *pAdvertisedDeviceCallBack;
 
-/** Define a class to handle the callbacks when advertisments are received */
+void scanEndedCB(NimBLEScanResults results)
+{
+    Serial.println("Scan Ended");
+}
 
 /** Notification / Indication receiving handler callback */
 // Notification from 4c:75:25:xx:yy:zz: Service = 0x1812, Characteristic = 0x2a4d, Value = 1,0,0,0,0,
@@ -111,11 +106,6 @@ void notifyCB(NimBLERemoteCharacteristic *pRemoteCharacteristic, uint8_t *pData,
     Serial.println();
 }
 
-/** Callback to process the results of the last scan or restart it */
-void scanEndedCB(NimBLEScanResults results)
-{
-    Serial.println("Scan Ended");
-}
 /** Create a single global instance of the callback class to be used by all clients */
 
 /** Handles the provisioning of clients and connects / interfaces with the server */
@@ -267,7 +257,7 @@ bool connectToServer(NimBLEAdvertisedDevice *advDevice)
     return true;
 }
 
-void bluetooth_setup()
+void bluetoothSetup(void)
 {
 
     /** Initialize NimBLE, no device name spcified as we are not advertising */
@@ -316,7 +306,7 @@ void bluetooth_setup()
     pScan->start(SCAN_TIME, scanEndedCB);
 }
 
-void bluetooth_loop()
+void bluetoothLoop()
 {
     /** Loop here until we find a device we want to connect to */
     if (!pAdvertisedDeviceCallBack->shouldConnect())
@@ -334,6 +324,6 @@ void bluetooth_loop()
     else
     {
         Serial.println("Failed to connect, starting scan");
-        NimBLEDevice::getScan()->start(scanTime, scanEndedCB);
+        NimBLEDevice::getScan()->start(SCAN_TIME, scanEndedCB);
     }
 }

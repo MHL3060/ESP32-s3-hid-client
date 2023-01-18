@@ -2,7 +2,6 @@
 #include <FreeRTOS.h>
 #include <FreeRTOSConfig.h>
 #include "Bluetooth.h"
-#include "Control.h"
 
 #if CONFIG_FREERTOS_UNICORE
 static const BaseType_t app_cpu = 0;
@@ -18,11 +17,10 @@ void setup()
 {
   Serial.begin(115200);
   Serial.print("starting");
-
-  bluetooth_setup();
+  bluetoothSetup();
 }
 
 void loop()
 {
-  bluetooth_loop();
+  bluetoothLoop();
 }

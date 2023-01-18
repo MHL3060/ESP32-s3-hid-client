@@ -3,8 +3,8 @@
 void AdvertisedDeviceCallbacks::onResult(NimBLEAdvertisedDevice *advertisedDevice)
 {
     if ((advertisedDevice->getAdvType() == BLE_HCI_ADV_TYPE_ADV_DIRECT_IND_HD) ||
-     (advertisedDevice->getAdvType() == BLE_HCI_ADV_TYPE_ADV_DIRECT_IND_LD) || 
-     (advertisedDevice->haveServiceUUID() && advertisedDevice->isAdvertisingService(NimBLEUUID(HID_SERVICE))))
+        (advertisedDevice->getAdvType() == BLE_HCI_ADV_TYPE_ADV_DIRECT_IND_LD) ||
+        (advertisedDevice->haveServiceUUID() && advertisedDevice->isAdvertisingService(NimBLEUUID(HID_SERVICE))))
     {
         Serial.printf("onResult: AdvType= %d\r\n", advertisedDevice->getAdvType());
         Serial.print("Advertised HID Device found: ");
@@ -32,4 +32,8 @@ bool AdvertisedDeviceCallbacks::shouldConnect()
 NimBLEAdvertisedDevice *AdvertisedDeviceCallbacks::getCandidatedadDevice()
 {
     return candidateDevice;
+}
+
+AdvertisedDeviceCallbacks::~AdvertisedDeviceCallbacks()
+{
 }
