@@ -50,11 +50,11 @@ public:
 
 private:
     NimBLEAdvertisedDevice *candidateDevice;
-    bool shouldProcessed;
 };
 
-void bluetoothSetup();
 
+bool handleService(NimBLERemoteService *pSvc, boolean reconnected);
+void bluetoothSetup();
 void bluetoothLoop();
 
 #endif

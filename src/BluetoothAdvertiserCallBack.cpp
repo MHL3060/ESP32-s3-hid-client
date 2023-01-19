@@ -14,19 +14,16 @@ void AdvertisedDeviceCallbacks::onResult(NimBLEAdvertisedDevice *advertisedDevic
         NimBLEDevice::getScan()->stop();
         /** Save the device reference in a global for the client to use*/
         candidateDevice = advertisedDevice;
-        /** Ready to connect now */
-        shouldProcessed = true;
     }
 };
 void AdvertisedDeviceCallbacks::removeCandidate()
 {
-    shouldProcessed = false;
     candidateDevice = NULL;
 }
 
 bool AdvertisedDeviceCallbacks::shouldConnect()
 {
-    return shouldProcessed;
+    return candidateDevice != NULL;
 }
 
 NimBLEAdvertisedDevice *AdvertisedDeviceCallbacks::getCandidatedadDevice()
@@ -36,4 +33,5 @@ NimBLEAdvertisedDevice *AdvertisedDeviceCallbacks::getCandidatedadDevice()
 
 AdvertisedDeviceCallbacks::~AdvertisedDeviceCallbacks()
 {
+    candidateDevice = NULL;
 }

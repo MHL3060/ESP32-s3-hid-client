@@ -17,7 +17,7 @@ void scanEndedCB(NimBLEScanResults results)
 
 /** Notification / Indication receiving handler callback */
 // Notification from 4c:75:25:xx:yy:zz: Service = 0x1812, Characteristic = 0x2a4d, Value = 1,0,0,0,0,
-void notifyCB(NimBLERemoteCharacteristic *pRemoteCharacteristic, uint8_t *pData, size_t length, bool isNotify)
+void notifyHIDCB(NimBLERemoteCharacteristic *pRemoteCharacteristic, uint8_t *pData, size_t length, bool isNotify)
 {
     std::string str = (isNotify == true) ? "Notification" : "Indication";
     str += " from ";
@@ -192,10 +192,23 @@ bool connectToServer(NimBLEAdvertisedDevice *advDevice)
 
     /** Now we can read/write/subscribe the charateristics of the services we are interested in */
     NimBLERemoteService *pSvc = nullptr;
+    pSvc = pClient->getService(HID_SERVICE);
+    if (!handleService(pSvc, reconnected))
+    {
+        /** Disconnect if subscribe failed */
+        Serial.println("subscribe notification failed");
+        pClient->disconnect();
+    }
+    Serial.println("Done with this device!");
+    return true;
+}
+
+bool handleService(NimBLERemoteService *pSvc, boolean reconnected)
+{
+
     NimBLERemoteCharacteristic *pChr = nullptr;
     NimBLERemoteDescriptor *pDsc = nullptr;
 
-    pSvc = pClient->getService(HID_SERVICE);
     if (pSvc)
     { /** make sure it's not null */
         if (!reconnected)
@@ -208,6 +221,7 @@ bool connectToServer(NimBLEAdvertisedDevice *advDevice)
             pChr = pSvc->getCharacteristic(HID_REPORT_MAP);
             if (pChr)
             { /** make sure it's not null */
+
                 Serial.print("HID_REPORT_MAP ");
                 if (pChr->canRead())
                 {
@@ -242,19 +256,17 @@ bool connectToServer(NimBLEAdvertisedDevice *advDevice)
                 Serial.println(it->toString().c_str());
                 if (it->canNotify())
                 {
-                    if (!it->subscribe(true, notifyCB))
+                    if (!it->subscribe(true, notifyHIDCB))
                     {
-                        /** Disconnect if subscribe failed */
-                        Serial.println("subscribe notification failed");
-                        pClient->disconnect();
+
                         return false;
                     }
                 }
             }
         }
+        return true;
     }
-    Serial.println("Done with this device!");
-    return true;
+    return false;
 }
 
 void bluetoothSetup(void)
@@ -280,7 +292,7 @@ void bluetoothSetup(void)
     // NimBLEDevice::setSecurityAuth(/*BLE_SM_PAIR_AUTHREQ_BOND | BLE_SM_PAIR_AUTHREQ_MITM |*/ BLE_SM_PAIR_AUTHREQ_SC);
 
     /** Optional: set the transmit power, default is 3db */
-    NimBLEDevice::setPower(ESP_PWR_LVL_P9); /** +9db */
+    NimBLEDevice::setPower(ESP_PWR_LVL_P3); /** +9db */
 
     /** Optional: set any devices you don't want to get advertisments from */
     // NimBLEDevice::addIgnored(NimBLEAddress ("aa:bb:cc:dd:ee:ff"));
