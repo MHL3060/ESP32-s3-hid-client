@@ -6,9 +6,7 @@
 // Install NimBLE-Arduino by h2zero using the IDE library manager.
 #include <NimBLEDevice.h>
 #include "Bluetooth.h"
-
-static ClientCallbacks clientCB;
-AdvertisedDeviceCallbacks *pAdvertisedDeviceCallBack;
+#include "MouseBridge.h"
 
 void scanEndedCB(NimBLEScanResults results)
 {
@@ -17,7 +15,7 @@ void scanEndedCB(NimBLEScanResults results)
 
 /** Notification / Indication receiving handler callback */
 // Notification from 4c:75:25:xx:yy:zz: Service = 0x1812, Characteristic = 0x2a4d, Value = 1,0,0,0,0,
-void notifyHIDCB(NimBLERemoteCharacteristic *pRemoteCharacteristic, uint8_t *pData, size_t length, bool isNotify)
+void BluetoothHID::notifyHIDCB(NimBLERemoteCharacteristic *pRemoteCharacteristic, uint8_t *pData, size_t length, bool isNotify)
 {
     std::string str = (isNotify == true) ? "Notification" : "Indication";
     str += " from ";
@@ -103,13 +101,14 @@ void notifyHIDCB(NimBLERemoteCharacteristic *pRemoteCharacteristic, uint8_t *pDa
         }
         break;
     }
+
     Serial.println();
 }
 
 /** Create a single global instance of the callback class to be used by all clients */
 
 /** Handles the provisioning of clients and connects / interfaces with the server */
-bool connectToServer(NimBLEAdvertisedDevice *advDevice)
+bool BluetoothHID::connectToServer(NimBLEAdvertisedDevice *advDevice)
 {
     NimBLEClient *pClient = nullptr;
     bool reconnected = false;
@@ -203,7 +202,7 @@ bool connectToServer(NimBLEAdvertisedDevice *advDevice)
     return true;
 }
 
-bool handleService(NimBLERemoteService *pSvc, boolean reconnected)
+bool BluetoothHID::handleService(NimBLERemoteService *pSvc, boolean reconnected)
 {
 
     NimBLERemoteCharacteristic *pChr = nullptr;
@@ -256,9 +255,9 @@ bool handleService(NimBLERemoteService *pSvc, boolean reconnected)
                 Serial.println(it->toString().c_str());
                 if (it->canNotify())
                 {
+
                     if (!it->subscribe(true, notifyHIDCB))
                     {
-
                         return false;
                     }
                 }
@@ -269,9 +268,9 @@ bool handleService(NimBLERemoteService *pSvc, boolean reconnected)
     return false;
 }
 
-void bluetoothSetup(void)
+BluetoothHID::BluetoothHID(MouseBridge *pBr)
 {
-
+    pBridge = pBr;
     /** Initialize NimBLE, no device name spcified as we are not advertising */
     NimBLEDevice::init("");
 
@@ -318,7 +317,7 @@ void bluetoothSetup(void)
     pScan->start(SCAN_TIME, scanEndedCB);
 }
 
-void bluetoothLoop()
+void BluetoothHID::bluetoothLoop()
 {
     /** Loop here until we find a device we want to connect to */
     if (!pAdvertisedDeviceCallBack->shouldConnect())

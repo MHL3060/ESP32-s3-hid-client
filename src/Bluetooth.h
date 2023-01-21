@@ -2,6 +2,7 @@
 #define BLUETOOTH_HID_H
 
 #include <NimBLEDevice.h>
+#include "MouseBridge.h"
 
 #define SCAN_TIME 0 /** 0 = scan forever */
 
@@ -52,9 +53,18 @@ private:
     NimBLEAdvertisedDevice *candidateDevice;
 };
 
+class BluetoothHID
+{
+public:
+    BluetoothHID(MouseBridge *bridge);
+    void bluetoothLoop();
 
-bool handleService(NimBLERemoteService *pSvc, boolean reconnected);
-void bluetoothSetup();
-void bluetoothLoop();
-
+private:
+    bool connectToServer(NimBLEAdvertisedDevice *advDevice);
+    bool handleService(NimBLERemoteService *pSvc, boolean reconnected);
+    static void notifyHIDCB(NimBLERemoteCharacteristic *pRemoteCharacteristic, uint8_t *pData, size_t length, bool isNotify);
+    AdvertisedDeviceCallbacks *pAdvertisedDeviceCallBack;
+    ClientCallbacks clientCB;
+    MouseBridge *pBridge;
+};
 #endif
