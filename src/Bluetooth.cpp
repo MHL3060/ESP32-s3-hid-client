@@ -8,101 +8,71 @@
 #include "Bluetooth.h"
 #include "MouseBridge.h"
 
-void scanEndedCB(NimBLEScanResults results)
+BluetoothHID::BluetoothHID()
 {
-    Serial.println("Scan Ended");
+
+    /** Initialize NimBLE, no device name spcified as we are not advertising */
+    NimBLEDevice::init("");
+
+    /** Set the IO capabilities of the device, each option will trigger a different pairing method.
+     *  BLE_HS_IO_KEYBOARD_ONLY    - Passkey pairing
+     *  BLE_HS_IO_DISPLAY_YESNO   - Numeric comparison pairing
+     *  BLE_HS_IO_NO_INPUT_OUTPUT - DEFAULT setting - just works pairing
+     */
+    // NimBLEDevice::setSecurityIOCap(BLE_HS_IO_KEYBOARD_ONLY); // use passkey
+    // NimBLEDevice::setSecurityIOCap(BLE_HS_IO_DISPLAY_YESNO); //use numeric comparison
+
+    /** 2 different ways to set security - both calls achieve the same result.
+     *  no bonding, no man in the middle protection, secure connections.
+     *
+     *  These are the default values, only shown here for demonstration.
+     */
+    NimBLEDevice::setSecurityAuth(true, true, true);
+    // NimBLEDevice::setSecurityAuth(/*BLE_SM_PAIR_AUTHREQ_BOND | BLE_SM_PAIR_AUTHREQ_MITM |*/ BLE_SM_PAIR_AUTHREQ_SC);
+
+    /** Optional: set the transmit power, default is 3db */
+    NimBLEDevice::setPower(ESP_PWR_LVL_P3); /** +9db */
+    /** create new scan */
+    NimBLEScan *pScan = NimBLEDevice::getScan();
+
+    pAdvertisedDeviceCallBack = new AdvertisedDeviceCallbacks();
+    /** create a callback that gets called when advertisers are found */
+    pScan->setAdvertisedDeviceCallbacks(pAdvertisedDeviceCallBack);
+
+    /** Set scan interval (how often) and window (how long) in milliseconds */
+    pScan->setInterval(45);
+    pScan->setWindow(15);
+
+    /** Active scan will gather scan response data from advertisers
+     *  but will use more energy from both devices
+     */
+    pScan->setActiveScan(true);
+    /** Start scanning for advertisers for the scan time specified (in seconds) 0 = forever
+     *  Optional callback for when scanning stops.
+     */
+    pScan->start(SCAN_TIME, scanEndedCB);
 }
 
-/** Notification / Indication receiving handler callback */
-// Notification from 4c:75:25:xx:yy:zz: Service = 0x1812, Characteristic = 0x2a4d, Value = 1,0,0,0,0,
-void BluetoothHID::notifyHIDCB(NimBLERemoteCharacteristic *pRemoteCharacteristic, uint8_t *pData, size_t length, bool isNotify)
+void BluetoothHID::bluetoothLoop()
 {
-    std::string str = (isNotify == true) ? "Notification" : "Indication";
-    str += " from ";
-    /** NimBLEAddress and NimBLEUUID have std::string operators */
-    str += std::string(pRemoteCharacteristic->getRemoteService()->getClient()->getPeerAddress());
-    str += ": Service = " + std::string(pRemoteCharacteristic->getRemoteService()->getUUID());
-    str += ", Characteristic = " + std::string(pRemoteCharacteristic->getUUID());
-    str += ", Handle = 0x";
-    Serial.print(str.c_str());
-    Serial.print(pRemoteCharacteristic->getHandle());
-    Serial.print(", Value = ");
-    for (size_t i = 0; i < length; i++)
+    /** Loop here until we find a device we want to connect to */
+    if (!pAdvertisedDeviceCallBack->shouldConnect())
     {
-        Serial.print(pData[i], HEX);
-        Serial.print(',');
+        return;
     }
-    Serial.print(' ');
-    switch (length)
+    NimBLEAdvertisedDevice *pCandidateDevice = pAdvertisedDeviceCallBack->getCandidatedadDevice();
+    pAdvertisedDeviceCallBack->removeCandidate();
+
+    /** Found a device we want to connect to, do it now */
+    if (connectToServer(pCandidateDevice))
     {
-        uint16_t appearance;
-    case 5:
-        // https://github.com/wakwak-koba/ESP32-NimBLE-Mouse
-        // returns 5 bytes per HID report
-        Serial.printf("buttons: %02x, x: %d, y: %d, wheel: %d hwheel: %d",
-                      pData[0], (int8_t)pData[1], (int8_t)pData[2], (int8_t)pData[3], (int8_t)pData[4]);
-        break;
-    case 6:
-        // BLE Trackball Mouse from Amazon returns 6 bytes per HID report
-        typedef struct __attribute__((__packed__)) trackball_mouse
-        {
-            uint8_t buttons;
-            int16_t x;
-            int16_t y;
-            int8_t wheel;
-        } trackball_mouse_t;
-        {
-            trackball_mouse_t *my_mouse;
-            my_mouse = (trackball_mouse_t *)pData;
-            Serial.printf("buttons: %02x, x: %d, y: %d, wheel: %d",
-                          my_mouse->buttons, my_mouse->x, my_mouse->y, my_mouse->wheel);
-        }
-        break;
-
-    case 7:
-    case 9:
-        if (appearance == APPEARANCE_HID_MOUSE)
-        {
-            // MS BLE Mouse returns 9 bytes per HID report
-            typedef struct __attribute__((__packed__)) ms_mouse
-            {
-                uint8_t buttons;
-                int16_t x;
-                int16_t y;
-                int16_t wheel;
-                int16_t pan;
-            } ms_mouse_t;
-            {
-                ms_mouse_t *my_mouse;
-                my_mouse = (ms_mouse_t *)pData;
-                Serial.printf("buttons: %02x, x: %d, y: %d, wheel: %d, pan: %d",
-                              my_mouse->buttons, my_mouse->x, my_mouse->y, my_mouse->wheel, my_mouse->pan);
-            }
-        }
-        else if (appearance == APPEARANCE_HID_GAMEPAD)
-        {
-            typedef struct __attribute__((__packed__))
-            {
-                uint8_t x;
-                uint8_t y;
-                uint8_t z;
-                uint8_t rz;
-                uint8_t brake;
-                uint8_t accel;
-                uint8_t hat;
-                uint16_t buttons;
-            } joystick_t;
-            {
-                joystick_t *my_joystick;
-                my_joystick = (joystick_t *)pData;
-                Serial.printf("buttons: %02x, x: %d, y: %d",
-                              my_joystick->buttons, my_joystick->x, my_joystick->y);
-            }
-        }
-        break;
+        Serial.println("Success! we should now be getting notifications!");
     }
-
-    Serial.println();
+    else
+    {
+        Serial.println("Failed to connect, starting scan");
+        NimBLEDevice::getScan()->start(SCAN_TIME, scanEndedCB);
+    }
 }
 
 /** Create a single global instance of the callback class to be used by all clients */
@@ -266,75 +236,4 @@ bool BluetoothHID::handleService(NimBLERemoteService *pSvc, boolean reconnected)
         return true;
     }
     return false;
-}
-
-BluetoothHID::BluetoothHID(MouseBridge *pBr)
-{
-    pBridge = pBr;
-    /** Initialize NimBLE, no device name spcified as we are not advertising */
-    NimBLEDevice::init("");
-
-    /** Set the IO capabilities of the device, each option will trigger a different pairing method.
-     *  BLE_HS_IO_KEYBOARD_ONLY    - Passkey pairing
-     *  BLE_HS_IO_DISPLAY_YESNO   - Numeric comparison pairing
-     *  BLE_HS_IO_NO_INPUT_OUTPUT - DEFAULT setting - just works pairing
-     */
-    // NimBLEDevice::setSecurityIOCap(BLE_HS_IO_KEYBOARD_ONLY); // use passkey
-    // NimBLEDevice::setSecurityIOCap(BLE_HS_IO_DISPLAY_YESNO); //use numeric comparison
-
-    /** 2 different ways to set security - both calls achieve the same result.
-     *  no bonding, no man in the middle protection, secure connections.
-     *
-     *  These are the default values, only shown here for demonstration.
-     */
-    NimBLEDevice::setSecurityAuth(true, true, true);
-    // NimBLEDevice::setSecurityAuth(/*BLE_SM_PAIR_AUTHREQ_BOND | BLE_SM_PAIR_AUTHREQ_MITM |*/ BLE_SM_PAIR_AUTHREQ_SC);
-
-    /** Optional: set the transmit power, default is 3db */
-    NimBLEDevice::setPower(ESP_PWR_LVL_P3); /** +9db */
-
-    /** Optional: set any devices you don't want to get advertisments from */
-    // NimBLEDevice::addIgnored(NimBLEAddress ("aa:bb:cc:dd:ee:ff"));
-
-    /** create new scan */
-    NimBLEScan *pScan = NimBLEDevice::getScan();
-
-    pAdvertisedDeviceCallBack = new AdvertisedDeviceCallbacks();
-    /** create a callback that gets called when advertisers are found */
-    pScan->setAdvertisedDeviceCallbacks(pAdvertisedDeviceCallBack);
-
-    /** Set scan interval (how often) and window (how long) in milliseconds */
-    pScan->setInterval(45);
-    pScan->setWindow(15);
-
-    /** Active scan will gather scan response data from advertisers
-     *  but will use more energy from both devices
-     */
-    pScan->setActiveScan(true);
-    /** Start scanning for advertisers for the scan time specified (in seconds) 0 = forever
-     *  Optional callback for when scanning stops.
-     */
-    pScan->start(SCAN_TIME, scanEndedCB);
-}
-
-void BluetoothHID::bluetoothLoop()
-{
-    /** Loop here until we find a device we want to connect to */
-    if (!pAdvertisedDeviceCallBack->shouldConnect())
-    {
-        return;
-    }
-    NimBLEAdvertisedDevice *pCandidateDevice = pAdvertisedDeviceCallBack->getCandidatedadDevice();
-    pAdvertisedDeviceCallBack->removeCandidate();
-
-    /** Found a device we want to connect to, do it now */
-    if (connectToServer(pCandidateDevice))
-    {
-        Serial.println("Success! we should now be getting notifications!");
-    }
-    else
-    {
-        Serial.println("Failed to connect, starting scan");
-        NimBLEDevice::getScan()->start(SCAN_TIME, scanEndedCB);
-    }
 }

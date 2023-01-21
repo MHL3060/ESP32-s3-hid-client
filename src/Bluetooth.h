@@ -28,6 +28,7 @@ static uint8_t connectPhys = BLE_GAP_LE_PHY_CODED_MASK | BLE_GAP_LE_PHY_1M_MASK 
 
 /** Callback to process the results of the last scan or restart it */
 void scanEndedCB(NimBLEScanResults results);
+void notifyHIDCB(NimBLERemoteCharacteristic *pRemoteCharacteristic, uint8_t *pData, size_t length, bool isNotify);
 
 class ClientCallbacks : public NimBLEClientCallbacks
 {
@@ -56,15 +57,51 @@ private:
 class BluetoothHID
 {
 public:
-    BluetoothHID(MouseBridge *bridge);
+    BluetoothHID();
     void bluetoothLoop();
 
 private:
     bool connectToServer(NimBLEAdvertisedDevice *advDevice);
     bool handleService(NimBLERemoteService *pSvc, boolean reconnected);
-    static void notifyHIDCB(NimBLERemoteCharacteristic *pRemoteCharacteristic, uint8_t *pData, size_t length, bool isNotify);
     AdvertisedDeviceCallbacks *pAdvertisedDeviceCallBack;
     ClientCallbacks clientCB;
-    MouseBridge *pBridge;
 };
+
+typedef struct __attribute__((__packed__)) logitech_mouse
+{
+    uint8_t buttons;
+    int16_t x;
+    int16_t y;
+    int8_t wheel;
+    int8_t pan;
+} logitech_mouse_t;
+
+typedef struct __attribute__((__packed__)) ms_mouse
+{
+    uint8_t buttons;
+    int16_t x;
+    int16_t y;
+    int16_t wheel;
+    int16_t pan;
+} ms_mouse_t;
+
+typedef struct __attribute__((__packed__))
+{
+    uint8_t x;
+    uint8_t y;
+    uint8_t z;
+    uint8_t rz;
+    uint8_t brake;
+    uint8_t accel;
+    uint8_t hat;
+    uint16_t buttons;
+} joystick_t;
+
+typedef struct __attribute__((__packed__)) trackball_mouse
+{
+    uint8_t buttons;
+    int16_t x;
+    int16_t y;
+    int8_t wheel;
+} trackball_mouse_t;
 #endif
