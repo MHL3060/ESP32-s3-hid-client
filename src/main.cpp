@@ -25,21 +25,24 @@ void scanEndedCB(NimBLEScanResults results)
 // Notification from 4c:75:25:xx:yy:zz: Service = 0x1812, Characteristic = 0x2a4d, Value = 1,0,0,0,0,
 void notifyHIDCB(NimBLERemoteCharacteristic *pRemoteCharacteristic, uint8_t *pData, size_t length, bool isNotify)
 {
+  /**
   std::string str = (isNotify == true) ? "Notification" : "Indication";
   str += " from ";
-  /** NimBLEAddress and NimBLEUUID have std::string operators */
+   // NimBLEAddress and NimBLEUUID have std::string operators
   str += std::string(pRemoteCharacteristic->getRemoteService()->getClient()->getPeerAddress());
   str += ": Service = " + std::string(pRemoteCharacteristic->getRemoteService()->getUUID());
   str += ", Characteristic = " + std::string(pRemoteCharacteristic->getUUID());
   str += ", Handle = 0x";
   Serial.print(str.c_str());
   Serial.print(pRemoteCharacteristic->getHandle());
-  Serial.print(", Value = ");
+  */
+  // Serial.print(", Value = ");
   for (size_t i = 0; i < length; i++)
   {
     Serial.print(pData[i], HEX);
     Serial.print(',');
   }
+  /*
   Serial.print(' ');
   switch (length)
   {
@@ -89,8 +92,9 @@ void notifyHIDCB(NimBLERemoteCharacteristic *pRemoteCharacteristic, uint8_t *pDa
     }
     break;
   }
-
+  */
   Serial.println();
+
   mouseBridge->notifyHIDCB(pData, length);
 }
 
