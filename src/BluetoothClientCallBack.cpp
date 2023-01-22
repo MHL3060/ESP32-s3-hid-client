@@ -9,7 +9,7 @@ void ClientCallbacks::onConnect(NimBLEClient *pClient)
      *  I find a multiple of 3-5 * the interval works best for quick response/reconnect.
      *  Min interval: 120 * 1.25ms = 150, Max interval: 120 * 1.25ms = 150, 0 latency, 60 * 10ms = 600ms timeout
      */
-    pClient->updateConnParams(120, 120, 0, 60);
+    pClient->updateConnParams(150, 150, 60, 60);
 };
 
 void ClientCallbacks::onDisconnect(NimBLEClient *pClient)

@@ -37,12 +37,13 @@ void notifyHIDCB(NimBLERemoteCharacteristic *pRemoteCharacteristic, uint8_t *pDa
   Serial.print(pRemoteCharacteristic->getHandle());
   */
   // Serial.print(", Value = ");
+  /*
   for (size_t i = 0; i < length; i++)
   {
     Serial.print(pData[i], HEX);
     Serial.print(',');
   }
-  /*
+
   Serial.print(' ');
   switch (length)
   {
@@ -93,7 +94,7 @@ void notifyHIDCB(NimBLERemoteCharacteristic *pRemoteCharacteristic, uint8_t *pDa
     break;
   }
   */
-  Serial.println();
+  // Serial.println();
 
   mouseBridge->notifyHIDCB(pData, length);
 }
