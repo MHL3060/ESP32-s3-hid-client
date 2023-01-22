@@ -15,6 +15,11 @@ void AdvertisedDeviceCallbacks::onResult(NimBLEAdvertisedDevice *advertisedDevic
         /** Save the device reference in a global for the client to use*/
         candidateDevice = advertisedDevice;
     }
+    else
+    {
+        Serial.printf("onResult: AdvType= %d\r\n", advertisedDevice->getAdvType());
+        Serial.println(advertisedDevice->toString().c_str());
+    }
 };
 void AdvertisedDeviceCallbacks::removeCandidate()
 {

@@ -68,11 +68,7 @@ void BluetoothHID::bluetoothLoop()
     {
         Serial.println("Success! we should now be getting notifications!");
     }
-    else
-    {
-        Serial.println("Failed to connect, starting scan");
-        NimBLEDevice::getScan()->start(SCAN_TIME, scanEndedCB);
-    }
+    NimBLEDevice::getScan()->start(SCAN_TIME, scanEndedCB);
 }
 
 /** Create a single global instance of the callback class to be used by all clients */
