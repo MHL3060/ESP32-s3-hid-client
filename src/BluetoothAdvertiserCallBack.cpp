@@ -8,6 +8,7 @@ void AdvertisedDeviceCallbacks::onResult(NimBLEAdvertisedDevice *advertisedDevic
     {
         Serial.printf("onResult: AdvType= %d\r\n", advertisedDevice->getAdvType());
         Serial.print("Advertised HID Device found: ");
+        Serial.printf("appearance=%x ", advertisedDevice->getAppearance());
         Serial.println(advertisedDevice->toString().c_str());
 
         /** stop scan before connecting */

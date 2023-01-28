@@ -191,12 +191,12 @@ bool BluetoothHID::handleService(NimBLERemoteService *pSvc, boolean reconnected)
             if (pChr)
             { /** make sure it's not null */
 
-                Serial.print("HID_REPORT_MAP ");
+                // Serial.print("HID_REPORT_MAP ");
                 if (pChr->canRead())
                 {
                     std::string value = pChr->readValue();
                     Serial.print(pChr->getUUID().toString().c_str());
-                    Serial.print(" Value: ");
+                    /*Serial.print(" Value: ");
                     uint8_t *p = (uint8_t *)value.data();
                     for (size_t i = 0; i < value.length(); i++)
                     {
@@ -204,6 +204,7 @@ bool BluetoothHID::handleService(NimBLERemoteService *pSvc, boolean reconnected)
                         Serial.print(',');
                     }
                     Serial.println();
+                    */
                 }
             }
             else
